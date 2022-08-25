@@ -1,0 +1,461 @@
+<script type="importmap">
+	{
+		"imports": {
+			"vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+		}
+	}
+</script>
+
+<div class="container :sm-mt-4.5 mt-1.5 mb-20" id="vueApp">
+	<p class="font-raleway font-extrabold sm:text-3xl text-2.5xl sm:pl-2 pl-0 uppercase">документы</p>
+	<div class="documents-header flex justify-between md:pl-10 md:pr-6 sm:pr-10 sm:mt-10 sm:pl-6.5 mt-5 px-1 py-3 bg-primary">
+		<div class="flex">
+			<a href class="block h-full md:mr-0 mr-1.5 p-3.5 rounded-sm border border-white self-start hover:text-primary ease-in duration-150 active:translate-y-1" type="a" href>
+				<svg class="w-6.5 h-6.5 md:w-6 md:h-6 mx-auto"><use xlink:href="/assets/images/icons/icons.svg#home"></use></svg>
+			</a>
+		</div>
+		<div class="flex">
+			<div class="relative">
+				<button @click="openCloseDropdown" v-click-outside="close" class="relative flex md:w-44 w-13 h-full transition-colors my-auto rounded-sm border border-secondary hover:text-primary">
+					<span class="md:flex hidden ml-8 my-3.5 text-base text-secondary text-left ease-in duration-150 active:translate-y-1">
+						{{ sortTitle }}
+					</span>
+					<div class="md:absolute static flex md:inset-y-0 md:right-4.5 my-auto mx-auto">
+						<svg class="md:my-auto w-5 h-5 md:m-0 m-4">
+							<use
+								xlink:href="/assets/images/icons/icons.svg#line-awesome"
+							></use>
+						</svg>
+					</div>
+				</button>
+				<div v-show="isOpen" class="dropdown-block absolute dsm:w-40 w-full bg-white border border-gray-300">
+					<div class="dropdown-menu my-4 ml-4">
+						<div v-for="(dropdowItem, itemId) in dropdownArrray" class="dropdown flex mx-auto">
+							<button @click="sortDocuments(itemId), sortTitle = dropdowItem" class="dropdown-item pt-1 text-base text-dark ease-in duration-150 active:translate-y-1">{{ dropdowItem }}</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<label v-click-outside="cleanInput" class="relative lg:w-80.5 md:w-69 w-46.5 block lg:ml-12 md:ml-6 ml-1 border rounded-sm border-white">
+				<input
+					ref="searchValue"
+					v-model="searchText"
+					@keyup.lazy.enter="searchDocument(searchText)"
+					class="bg-transparent placeholder-white py-3.5 sm:pl-7.5 pl-1 pr-14 text-base text-white ease-in duration-150 active:translate-y-1"
+					placeholder="Поиск"
+					type="text"
+					name="search"
+				/>
+				<span class="sr-only">Search</span>
+				<button @click="searchDocument(searchText)" class="absolute inset-y-0 right-0 flex items-center sm:mr-5 mr-2 ease-in duration-150 active:translate-y-1">
+					<svg class="w-5 h-5 md:w-5 md:h-5 mx-auto">
+						<use xlink:href="/assets/images/icons/icons.svg#search"></use>
+					</svg>
+				</button>
+			</label>
+		</div>
+	</div>
+	<div class="documents-block">
+		<div class="md:grid grid-flow-row-dense grid-cols-12 flex flex-col">
+			<div class="documents-folders flex flex-col xl:col-span-3 lg:col-span-4 col-span-5 justify-between bg-zinc-50 min-h-[510] dsm:mb-11">
+				<div class="document-folders-block flex flex-wrap flex-col md:mt-9 md:ml-10 sm:mt-9.5 sm:ml-6.5 mt-2.5 sm:mr-5">
+					<button v-show="!folderIsEmpty" @click="toPrevPage(directoriesArr)" class="flex sm:mb-13 mb-8 text-primary hover:text-primary ease-in duration-150 active:translate-y-1">
+						<span class="my-auto items-center">
+							<svg class="w-5 h-5"><use xlink:href="/assets/images/icons/icons.svg#i-back"></use></svg>
+						</span>
+						<span class="ml-4 current-directory font-bold text-lg text-left">
+							{{ parentFolder.name }}
+						</span>
+					</button>
+					<div v-show="SpoilerFolders" @click="toggleFolders(), rotateArrow()" class="md:hidden min-w-[300px] flex flex-row justify-center align-center items-center bg-primary text-secondary">
+						<div class="text-center">Перейти в папку</div>
+						<span :class="{'rotate-180': rotate}" class="my-4 ml-6 items-center ease-in duration-150 active:translate-y-1">
+							<svg class="w-5 h-5"><use xlink:href="/assets/images/icons/icons.svg#arrow-down"></use></svg>
+						</span>
+					</div>
+					<div v-show="!foldersTitles" :class="{'bg-white': isActive}">
+						<ul class="mb-28 dsm:ml-2.5 dsm:mb-5 dsm:mt-5">
+							<li
+								v-for="(folder, index) in folders"
+								class="documents-folders-title dsm:text-sm transition-colors sm:mb-6.5 mb-5 ease-in duration-150 transition-colors hover:font-semibold active:font-bold"
+								@click.prevent="toNextFolder(folder)"
+							>
+								<a href="#">{{ folder.name }}</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+				<div class="three-documents flex items-end justify-between mb-6.5 md:ml-10 sm:ml-6.5 sm:mr-5 dsm:mt-6 ml-2.5 dsm:mb-3.5">
+					<div href="/" class="flex items-center dsm:text-sm space-x-2.5 ease-in duration-150 active:translate-y-1 cursor-default">
+						<svg class="icon-three w-6 h-6 text-secondary"><use xlink:href="/assets/images/icons/icons.svg#three"></use></svg>
+						<div class="dsm:w-8 text-gray-300">Дерево документов</div>
+					</div>
+					<button @click="downloadDirectory(parentFolder.id, parentFolder.name)" :class="{'dsm:hidden': isMainPage}" class="md:hidden flex text-primary font-bold mr-2.5 ease-in duration-150 active:translate-y-1">
+						<p>Скачать все</p>
+					</button>
+				</div>
+			</div>
+			<div :class="{'dsm:hidden': isMainPage}" class="documents-content xl:col-span-9 lg:col-span-8 col-span-7 flex border border-gray-300">
+				<div v-show="!folderContent" class="isEmpty mx-auto my-auto">
+					<svg v-if="emptyFolderSearch" class="my-14 dsm:mx-auto sm:w-56 sm:h-56 w-24 h-24 text-secondary"><use xlink:href="/assets/images/icons/icons.svg#i-folder"></use></svg>
+					<div v-else>Ничего не найдено</div>
+				</div>
+				<div v-show="folderContent" class="folder-content w-full">
+					<table class="table-auto border-collapse border border-gray-300 dsm:border-0 w-full break-words">
+						<div class="flex justify-center align-center border">
+							<button @click="downloadDirectory(parentFolder.id, parentFolder.name)" :class="{'dsm:hidden': isMainPage}" class="xl:hidden md:flex hidden flex text-primary font-bold mr-2.5 ease-in duration-150 active:translate-y-1">
+								<p>Скачать все</p>
+							</button>
+						</div>
+						<thead class="dsm:hidden">
+						  <tr>
+							<th class="text-base text-left pl-5.5 pt-1.5 font-semibold border border-gray-300">Имя</th>
+							<th class="text-base text-center px-5 pt-1.5 font-semibold border border-gray-300">Дата</th>
+							<th class="text-base text-center px-5 pt-1.5 font-semibold border border-gray-300">Тип</th>
+							<th class="text-base text-center px-5 pt-1.5 font-semibold border border-gray-300">Размер</th>
+							<th class="xl:table-cell md:hidden table-cell text-base text-center text-primary px-1 pt-1.5 font-semibold border border-gray-300"><button @click="downloadDirectory(parentFolder.id, parentFolder.name)">Скачать все</button></th>
+						  </tr>
+						</thead>
+						<tbody class="dsm:divide-y dsm:divide-slate-200">
+						  <tr v-for="file in folderContentFiles" class="dsm:grid dsm:grid-rows-2 dsm:grid-cols-5">
+							<td class="text-left dsm:col-span-full md:border md:border-gray-300 pl-5.5 py-5 dsm:py-2.5 dsm:pl-3.5 place-content-center break-all">{{file.name}}</td>
+							<td class="text-center dxl:px-2 dsm:col-span-2 dsm:pl-3.5 dsm:align-text-bottom dsm:text-left md:border md:border-gray-300 py-5 dsm:py-2.5 place-content-center break-words">{{file.uploadDate}}</td>
+							<td class="text-center dxl:px-2 dsm:align-text-bottom md:border md:border-gray-300 py-5 dsm:py-2.5 place-content-center break-words">{{file.extension}}</td>
+							<td class="text-center dxl:px-2 dsm:align-text-bottom md:border md:border-gray-300 py-5 dsm:py-2.5 place-content-center break-words">
+								<div class="flex flex-row items-center justify-center">
+									{{file.size}}
+									<template @click.prevent="downloadFile(file.id, file.name, file.extension)" class="xl:hidden md:flex hidden text-center dsm:align-text-bottom ml-2 py-5 dsm:py-2.5  place-content-center hover:text-primary ease-in duration-150 active:translate-y-1">
+										<a :href="`${baseURL}/documents/{{file.id}}`" >
+											<svg class="icon-three mx-auto my-auto w-5 h-5"><use xlink:href="/assets/images/icons/icons.svg#i-save"></use></svg>
+										</a>
+									</template>
+								</div>
+							</td>
+							<td @click.prevent="downloadFile(file.id, file.name, file.extension)" class="xl:table-cell md:hidden table-cell text-center dsm:align-text-bottom md:border md:border-gray-300 py-5 dsm:py-2.5  place-content-center hover:text-primary ease-in duration-150 active:translate-y-1">
+								<a :href="`${baseURL}/documents/{{file.id}}`">
+									<svg class="icon-three mx-auto my-auto w-5 h-5"><use xlink:href="/assets/images/icons/icons.svg#i-save"></use></svg>
+								</a>
+							</td>
+						  </tr>
+						</tbody>
+					  </table>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script type="module">
+	import { createApp } from 'vue'
+
+	const baseURL = "";
+	const appVue = createApp({
+	data() {
+		return {
+			windowWidth: window.innerWidth,
+			folders: [],
+			folderContentFiles: [],
+			baseURL: baseURL,
+			directoriesArr: [
+				{
+					id: "",
+					name: "ГЛАВНАЯ",
+					parent: "root"
+				}
+			],
+			parentFolder: {},
+			sortTitle: "Сортировка",
+			dropdownArrray: ["По имени", "По дате", "По типу", "По размеру"],
+			folderIsEmpty: true,
+			isOpen: false,
+			foldersTitles: false,
+    		isActive: false,
+			isMainPage: true,
+			SpoilerFolders: false,
+			folderContent: false,
+			searchText: "",
+			rotate: false,
+			emptyFolderSearch: true
+		}
+	},
+	async created() {
+    	window.addEventListener("resize", this.onResize);
+		try {
+			const res = await fetch(`${baseURL}/document/root`);
+			if (!res.ok) {
+				console.log(res);
+				const message = `An error has occured: ${res.status} - ${res.statusText}`;
+				throw new Error(message);
+			}
+			const data = await res.json();
+			const result = {
+				status: res.status + "-" + res.statusText,
+				headers: {
+					"Content-Type": res.headers.get("Content-Type"),
+					"Content-Length": res.headers.get("Content-Length")
+				},
+				data: data
+			}
+			this.folders = result.data.directories;
+		} catch (err) {
+			console.log(err.message);
+		}
+	},
+	destroyed() {
+		window.removeEventListener("resize", this.onResize);
+	},
+	methods: {
+		onResize(e) {
+			this.windowWidth = window.innerWidth;
+			if(this.windowWidth < 768) {
+				if(this.directoriesArr.length > 1) {
+					this.folders.length ? this.SpoilerFolders = true : this.SpoilerFolders = false;
+					this.isMainPage = false;
+					this.isActive = false;
+				} else {
+					this.SpoilerFolders = false;
+					this.isMainPage = true;
+					this.foldersTitles = false;
+				}
+			} else {
+				this.foldersTitles = false;
+			}
+		},
+		async fetchByURL(urlToFetch) {
+			try {
+				const res = await fetch(`${this.baseURL}/${urlToFetch}`);
+				if (!res.ok) {
+					console.log(res);
+					const message = `An error has occured: ${res.status} - ${res.statusText}`;
+					throw new Error(message);
+				}
+				const data = await res.json();
+				const result = {
+					status: res.status + "-" + res.statusText,
+					headers: {
+						"Content-Type": res.headers.get("Content-Type"),
+						"Content-Length": res.headers.get("Content-Length")
+					},
+					data: data
+				}
+				result.data.files.forEach(file => file.size = this.normalizeFileSize(file.size));
+				result.data.files.forEach(file => file.uploadDate = this.normalizeDate(file.uploadDate));
+				result.data.files.forEach(file => file.extension = this.normalizeExtension(file.extension));
+				return result
+			} catch (err) {
+				console.log(err.message);
+			}
+		},
+		cleanInput() {
+			this.searchText = "";
+			this.$refs["searchValue"].value = "";
+		},
+		normalizeFileSize(bytes, si=false, dp=1) {
+			const thresh = si ? 1000 : 1024;
+
+			if (Math.abs(bytes) < thresh) {
+				return bytes + ' Б';
+			}
+
+			const units = si
+				? ['кБ', 'КБ', 'ГБ', 'ТБ', 'ПБ', 'ЭБ', 'ЗБ', 'ЙБ']
+				: ['КиБ', 'МиБ', 'ГиБ', 'ТиБ', 'ПиБ', 'ЭиБ', 'ЗиБ', 'ЙиБ'];
+			let u = -1;
+			const r = 10**dp;
+
+			do {
+				bytes /= thresh;
+				++u;
+			} while (Math.round(Math.abs(bytes) * r) / r >= thresh && u < units.length - 1);
+
+
+			return bytes.toFixed(dp) + ' ' + units[u];
+		},
+		normalizeDate(fileDate) {
+			return new Date().toLocaleString().split(',')[0].replace('-', ' ');
+		},
+		normalizeExtension(fileExt) {
+			return fileExt.toUpperCase().replace(/[\s.,%]/g, '');
+		},
+		checkFolders(result, isMainDocPage = false) {
+			this.folders = result.data.directories;
+			this.folderContentFiles = result.data.files;
+			result.data.files.length ? this.folderContent = true : this.folderContent = false;
+
+			if(this.windowWidth < 768) {
+				if(isMainDocPage === false) {
+					this.folders.length ? this.SpoilerFolders = true : this.SpoilerFolders = false;
+					this.foldersTitles = true;
+					this.isMainPage = false;
+					this.isActive = false;
+				} else {
+					this.SpoilerFolders = false;
+					this.isMainPage = true;
+					this.foldersTitles = false;
+					this.isActive = false;
+				}
+			}
+		},
+		async toNextFolder(folder) {
+			this.folderIsEmpty = false;
+			const result = await this.fetchByURL(`document/${folder.id}`);
+			this.checkFolders(result);
+			this.directoriesArr.push(folder);
+			this.parentFolder = this.directoriesArr[this.directoriesArr.length - 2];
+		},
+		async toPrevPage(directoryPages) {
+			const lastDir = directoryPages.pop();
+			let urlPage;
+			this.emptyFolderSearch = true;
+			if(directoryPages.length <= 1 || lastDir.parent === null || this.parentFolder.name === "ДОКУМЕНТЫ") {
+				this.cleanInput();
+				this.parentFolder.name = "ГЛАВНАЯ"
+				this.folderIsEmpty = true;
+				urlPage = `document/root`;
+				const result = await this.fetchByURL(urlPage);
+				this.checkFolders(result, true);
+				result.data.files.length ? this.folderContent = true : this.folderContent = false;
+			} else {
+				urlPage = `document/${lastDir.parent}`;
+				const result = await this.fetchByURL(urlPage);
+				this.checkFolders(result);
+				this.parentFolder !== undefined ? this.parentFolder = directoryPages[directoryPages.length - 2] : this.parentFolder = this.directoriesArr;
+			}
+		},
+		async openDocumentsThree() {
+			const result = await this.fetchByURL('documents/getAll');
+			console.log(result);
+		},
+		openCloseDropdown() {
+			this.isOpen = !this.isOpen;
+		},
+		close() {
+			this.isOpen = false
+		},
+		toggleFolders() {
+			this.foldersTitles = !this.foldersTitles;
+      		this.isActive = !this.isActive;
+		},
+		sortDocuments(itemId) {
+			this.close();
+			switch (itemId) {
+				case 0:
+				//По имени
+					this.folderContentFiles.sort((a, b) => (a.name > b.name) ? 1 : -1);
+					break;
+				case 1:
+				//По дате
+					this.folderContentFiles.sort((a, b) => (a.uploadDate > b.uploadDate) ? 1 : -1);
+					break;
+				case 2:
+				//По типу
+					this.folderContentFiles.sort((a, b) => (a.extension > b.extension) ? 1 : -1);
+					break;
+				case 3:
+				//По размеру
+					this.folderContentFiles.sort((a, b) => (a.size > b.size) ? 1 : -1);
+					break;
+				default:
+				//you click dropdown noWhere
+					console.log('you click dropdown noWhere')
+					break;
+			}
+		},
+		transliterate(word){
+			var a = {"Ё":"YO","Й":"I","Ц":"TS","У":"U","К":"K","Е":"E","Н":"N","Г":"G","Ш":"SH","Щ":"SCH","З":"Z","Х":"H","Ъ":"'","ё":"yo","й":"i","ц":"ts","у":"u","к":"k","е":"e","н":"n","г":"g","ш":"sh","щ":"sch","з":"z","х":"h","ъ":"'","Ф":"F","Ы":"I","В":"V","А":"a","П":"P","Р":"R","ОquerySearch":"O","Л":"L","Д":"D","Ж":"ZH","Э":"E","ф":"f","ы":"i","в":"v","а":"a","п":"p","р":"r","о":"o","л":"l","д":"d","ж":"zh","э":"e","Я":"Ya","Ч":"CH","С":"S","М":"M","И":"I","Т":"T","Ь":"'","Б":"B","Ю":"YU","я":"ya","ч":"ch","с":"s","м":"m","и":"i","т":"t","ь":"'","б":"b","ю":"yu"};
+
+			return word.split('').map(function (char) {
+				return a[char] || char;
+			}).join("");
+		},
+		async fetchQuerySearch(querySearch) {
+			try {
+				const res = await fetch(`${this.baseURL}/document/search?query=${querySearch}`);
+				if (!res.ok) {
+					console.log(res);
+					const message = `An error has occured: ${res.status} - ${res.statusText}`;
+					throw new Error(message);
+				}
+				const result = await res.json();
+				result.forEach(file => file.size = this.normalizeFileSize(file.size));
+				result.forEach(file => file.uploadDate = this.normalizeDate(file.uploadDate));
+				result.forEach(file => file.extension = this.normalizeExtension(file.extension));
+				return result;
+			} catch (err) {
+				console.log(err.message);
+			}
+		},
+		showSearchResult(searchArr) {
+			if(this.windowWidth < 768) {
+				this.SpoilerFolders = false;
+				this.foldersTitles = true;
+				this.isMainPage = false;
+			}
+			this.folderIsEmpty = false;
+			this.folders = [];
+			this.directoriesArr = [];
+			this.directoriesArr.push({id: "", name: "ГЛАВНАЯ", parent: "root"}, { id: "", name: "ГЛАВНАЯ", parent: "root"});
+			this.directoriesArr[0].name = "ДОКУМЕНТЫ";
+			this.folderContentFiles = searchArr;
+			this.parentFolder !== undefined ? this.parentFolder = this.directoriesArr[this.directoriesArr.length - 2] : this.parentFolder = this.directoriesArr;
+		},
+		async searchDocument(querySearch) {
+			const searchArr = await this.fetchQuerySearch(querySearch);
+			searchArr.length ? this.folderContent = true : this.folderContent = false;
+
+			if(searchArr === null || searchArr === undefined || searchArr === "") {
+				alert('Ваш запрос пуст. Введите в поиск название файла');
+				return;
+			}
+			this.cleanInput();
+
+			if(!searchArr.length) {
+				this.emptyFolderSearch = false;
+				this.showSearchResult(searchArr);
+			} else {
+				this.folderIsEmpty = false;
+				this.showSearchResult(searchArr);
+			}
+		},
+		async downloadFile(fileId, fileName, fileExt = '.rar') {
+			const fullFileName = fileName.concat(fileExt.toLowerCase());
+
+			const urlFile =`document/downloadFile/${fileId}`;
+			const link = document.createElement("a");
+			link.href = urlFile;
+			link.download = fullFileName;
+			link.click();
+		},
+		async downloadDirectory(fileId, fileName, fileExt = 'rar') {
+			const fullFileName = fileName.concat('.', fileExt.toLowerCase());
+
+			const urlFile =`document/downloadDirectory/${fileId}`;
+			const link = document.createElement("a");
+			link.href = urlFile;
+			link.download = fullFileName;
+			link.click();
+		},
+		rotateArrow() {
+			this.rotate = !this.rotate;
+		}
+	}
+})
+	appVue.directive("click-outside", {
+		beforeMount: function (el, binding) {
+			const ourClickEventHandler = event => {
+				if (!el.contains(event.target) && el !== event.target) {
+					binding.value(event);
+				}
+			};
+			el.__vueClickEventHandler__ = ourClickEventHandler;
+			document.addEventListener("click", ourClickEventHandler);
+		},
+		unmounted: function (el) {
+			document.removeEventListener("click", el.__vueClickEventHandler__);
+		}
+	})
+appVue.mount('#vueApp')
+</script>
+
+<style>
+</style>
